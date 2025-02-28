@@ -1,0 +1,28 @@
+{
+    "mod": "aibot",
+    "author": "pine",
+    "ver": "1.3.0",
+    "dice_build": 635,
+    "brief": "插件接入bert判断是否需要回复，接入deepseek生成回复",
+    "comment": "只要呼唤千秋，或者聊到千秋感兴趣的内容（大概），千秋就会跑出来聊天哦",
+    "helpdoc": {
+        "aibot": "aibot插件 ver 1.2.0 by pine\n接入bert判断是否回复，接入deepseek生成回复\n使用.aibot help查看帮助"
+    },
+    "BERT_text_classification_server_ver": "1.0.0",
+    "classification_model_ver": "4.0",
+    "AI_model": "CoresHub DeepSeek-V3",
+    "order_list": [
+        ".aibot help //查看帮助",
+        ".aibot on //开启ai回复",
+        ".aibot off //关闭ai回复"
+    ],
+    "remark_list": [
+        "回复ai生成的消息，可以保持记忆继续交谈",
+        "为避免打扰跑团，当群聊开启log时不会生成回复",
+        "插件会将包含触发词的发言计入日志，仅会用于未来插件优化和骰娘管理，不会用于其他用途。",
+        "本插件仅供娱乐，ai回复不代表作者观点，不保证回复内容准确性、安全性",
+        "由于api不一定稳定，插件随时可能关闭维护，敬请谅解",
+        "发奇怪的内容前请三思",
+        "插件尚在测试阶段，遇到问题欢迎联系骰主602380092"
+    ]
+}
