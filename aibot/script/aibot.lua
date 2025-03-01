@@ -20,7 +20,7 @@ end
 --- 参数设置
 bert_address = "http://121.43.49.116:15974"
 deepseek_api = "https://openapi.coreshub.cn/v1/chat/completions"
-deepseek_api_token = "sk-OAv9DPyRfV8UmpGt7us0J6LDimEPf8qYOeVIj0shKJdF9Ejo"
+deepseek_api_token = "<your api key>"
 model = "DeepSeek-V3"
 notice_window = 0 -- 通知窗口
 max_length = 150  -- 检测长度限制，过长忽略
