@@ -560,6 +560,8 @@ if raw_msg then
     if raw_msg_without_at then
         raw_msg = raw_msg_without_at
     end
+else
+    return
 end
 
 currentTime = os.date("%Y-%m-%d %H:%M:%S")
@@ -575,8 +577,12 @@ local replacements = {
 }
 
 -- 进行批量替换
-for k, v in pairs(replacements) do
-    raw_msg = string.gsub(raw_msg, k, v)
+if raw_msg then
+    for k, v in pairs(replacements) do
+        raw_msg = string.gsub(raw_msg, k, v)
+    end
+else
+    return
 end
 
 -----------------------------------------------------------------------------------------------------
