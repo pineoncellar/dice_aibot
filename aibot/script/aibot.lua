@@ -6,44 +6,14 @@
 -----------------------------------------------------------------------------------------------------
 json = require("json")
 os = require("os")
+
 -----------------------------------------------------------------------------------------------------
---- 预处理
-raw_msg = msg.fromMsg
-if msg.gid then
-    channel_type = "group"
-    channel_id = msg.gid
-    channel_id_msg = "群聊" .. msg.gid
-else
-    channel_type = "private"
-    channel_id = msg.uid
-    channel_id_msg = "私聊"
-end
-user_id = msg.uid
+--- 以防万一，写个全局开关在这
+global_enable = getUserConf(getDiceQQ(), "aibot_enable", true)
 
-currentTime = os.date("%Y-%m-%d %H:%M:%S")
-
---- 替换特定词，免得ai听不懂跑团术语
--- 匹配和替换的表
-local replacements = {
-    ["1点妖"] = "运气好差",
-    ["一点妖"] = "运气好差",
-    ["一点仙"] = "差点就失败",
-    ["1点仙"] = "差点就失败",
-    -- ["[CQ:at, id=2901232322]"] = "七海千秋",
-}
-
--- 进行批量替换
-for k, v in pairs(replacements) do
-    raw_msg = string.gsub(raw_msg, k, v)
-end
-
-
---- debug模式，获取原始deepseekapi返回内容
-debug = false
-
-if string.sub(raw_msg, 1, 5) == "debug" then
-    debug = true
-    raw_msg = string.sub(raw_msg, 6)
+if not global_enable then
+    msg.ignored = true
+    return
 end
 
 -----------------------------------------------------------------------------------------------------
@@ -80,14 +50,111 @@ top_p = 0.7
 msg_reply = false
 
 -----------------------------------------------------------------------------------------------------
---- 以防万一，写个全局开关在这
-global_enable = getUserConf(getDiceQQ(), "aibot_enable", true)
+--- 各种配置列表
+-- 白名单
+white_group_list = {
+    1006250371,
+    705846169,
+    638835144,
+    1095953264,
+    1031369651,
+    249456205,
+    586917668,
+    -- 638835144,
+    943582383,
+    735824541,
+    214812521
+}
+white_user_list = {
+    -- 602380092,
+    2403055204,
+    162107594
+}
 
-if not global_enable then
-    msg.ignored = true
-    return
-end
+-- 非关键词测试群名单
+without_keyword_white_group_list = {
+    -- 638835144,
+    -- 586917668,
+    -- 249456205,
+    -- 705846169,
+    -- 943582383,
+    -- 735824541
+    -- 1006250371,
+}
 
+--- 关键词
+search_list = {
+    "七海千秋",
+    "七海",
+    "千秋",
+    "娜娜米",
+    "nanami",
+    -- "[CQ:at, id=2901232322]",
+
+    "search_end_flag"
+}
+
+-- 前缀排除词
+exclude_list = {
+    ".",
+    "。",
+    "（",
+    "(",
+    "#",
+    "reply_"
+}
+
+-- 违禁词/屏蔽词
+sens_words = { -- 违禁词不响应且上报
+    "你妈死了",
+    "nmsl",
+    "sb",
+    "傻逼",
+    "傻卵",
+    "去你的",
+    "滚",
+    "操你",
+    "他妈",
+    "妈的",
+    "毛病",
+    "做爱",
+    "脑残",
+    "中国",
+    "我国",
+    "祖国",
+    "毒品",
+    "国家"
+}
+
+-- 无关词
+unrelated_words = { -- 无关词不响应但不上报
+    -- 一些无关CQ码
+    "CQ:image",
+    "CQ:record",
+    "CQ:video",
+
+    -- 容易误触发的词
+    "各有千秋",
+    "阅遍千秋",
+    "千秋万代",
+    "千秋大业",
+    "千秋人物",
+    "功在千秋"
+}
+
+-----------------------------------------------------------------------------------------------------
+--- 窗口第一次触发回复时，发送此消息
+first_reply_help = [[-----------------------------
+【你已触发千秋的ai回复功能】
+方才的发言引起了千秋的兴趣，她跑出来回复你了（x
+这是骰主新添加的插件aibot，接入BERT模型判断是否需要回复，接入deepseekapi生成回复。
+可以使用 .aibot help 指令查看帮助
+插件在骰娘关闭状态下或日志开启状态下不会启用，若依然影响跑团，请使用.aibot off关闭插件。
+【此消息会在第一次触发ai回复时发送】
+]]
+
+-----------------------------------------------------------------------------------------------------
+---函数定义部分---
 -----------------------------------------------------------------------------------------------------
 --- 通用函数
 
@@ -184,13 +251,15 @@ function sendResponse(msg, response)
     speech_table = { {
         ["role"] = "user",
         ["content"] = raw_msg,
-        ["msgid"] = msg.msgid
+        ["msgid"] = msg.msgid,
+        ["timestamp"] = os.time()
     }
     }
     for k, v in ipairs(response_list) do
         table.insert(speech_table, {
             ["role"] = "assistant",
-            ["content"] = v
+            ["content"] = v,
+            ["timestamp"] = os.time()
         })
     end
 
@@ -263,21 +332,6 @@ function bert_post()
     return category
 end
 
---- prompt设置函数
-function set_prompt()
-    prompt_msg_table = {}
-
-    -- 分段添加prompt
-    for _, v in ipairs(prompt_list) do
-        table.insert(prompt_msg_table, {
-            ["role"] = "system",
-            ["content"] = v
-        })
-    end
-
-    return prompt_msg_table
-end
-
 -- deepseek api调用函数
 function deepseek_post()
     -- 调用api的基本元素
@@ -320,19 +374,7 @@ function deepseek_post()
 end
 
 -----------------------------------------------------------------------------------------------------
---- 窗口第一次触发回复时，发送此消息
-first_reply_help = [[-----------------------------
-【你已触发千秋的ai回复功能】
-方才的发言引起了千秋的兴趣，她跑出来回复你了（x
-这是骰主新添加的插件aibot，接入BERT模型判断是否需要回复，接入deepseekapi生成回复。
-可以使用 .aibot help 指令查看帮助
-插件在骰娘关闭状态下或日志开启状态下不会启用，若依然影响跑团，请使用.aibot off关闭插件。
-【此消息会在第一次触发ai回复时发送】
-]]
-
------------------------------------------------------------------------------------------------------
 ---prompt
-
 prompt_list = {
     [[
 # 任务
@@ -413,6 +455,22 @@ prompt_list = {
     --  "现在的时间是" .. os.date("%Y:%m:%d-%H:%M:%S") .. "，如果用户的发言与时间不符，如在早上说\"晚上好\"，或是说\"刚吃午餐\"等，请在回复中提醒。如果用户发言中未提及与时间相关的概念，则无视此限制，且**不会主动提及时间**。18点以后都属于晚上。",
     "消息能够包含多段发言，以在QQ群聊中模拟多段对话。每段发言以换行分隔。 "
 }
+
+--- prompt设置函数
+function set_prompt()
+    prompt_msg_table = {}
+
+    -- 分段添加prompt
+    for _, v in ipairs(prompt_list) do
+        table.insert(prompt_msg_table, {
+            ["role"] = "system",
+            ["content"] = v
+        })
+    end
+
+    return prompt_msg_table
+end
+
 -----------------------------------------------------------------------------------------------------
 --- 防止开头是清一色的嗯、唔、唔姆
 -- deepseek生成七海千秋人设的回复时几乎每句话前都有这种语气词，怎么调整prompt都不行所以通过程序控制频率
@@ -436,7 +494,7 @@ end
 -----------------------------------------------------------------------------------------------------
 --- 各种检测函数
 
---- 插件开关
+-- 插件开关
 function switch_detect()
     if msg.gid then
         if not getGroupConf(msg.gid, "aibot_enable", true) then
@@ -449,7 +507,7 @@ function switch_detect()
     end
 end
 
---- 回复词检测
+-- 回复词检测
 function reply_detect(raw_msg)
     reply_list = read_json(getDiceDir() .. "\\mod\\aibot\\data\\reply_list.json")
     if reply_list then
@@ -463,37 +521,7 @@ function reply_detect(raw_msg)
     end
 end
 
---- 白名单与非关键词测试群名单
-white_group_list = {
-    1006250371,
-    705846169,
-    638835144,
-    1095953264,
-    1031369651,
-    249456205,
-    586917668,
-    -- 638835144,
-    943582383,
-    735824541,
-    214812521
-}
-
-white_user_list = {
-    -- 602380092,
-    2403055204,
-    162107594
-}
-
-without_keyword_white_group_list = {
-    -- 638835144,
-    -- 586917668,
-    -- 249456205,
-    -- 705846169,
-    -- 943582383,
-    -- 735824541
-    -- 1006250371,
-}
-
+-- 白名单检测
 function white_detect()
     if msg.gid then
         for _, v in ipairs(white_group_list) do
@@ -509,11 +537,12 @@ function white_detect()
     end
 end
 
+-- 非关键词测试群检测
 function without_keyword_white_detect()
     if msg.gid then
         for _, v in ipairs(without_keyword_white_group_list) do
             if v == msg.gid then
-                log("v:" .. v .. "== msg.gid:" .. msg.gid, 0)
+                -- log("v:" .. v .. "== msg.gid:" .. msg.gid, 0)
                 return true
             end
         end
@@ -521,18 +550,7 @@ function without_keyword_white_detect()
     return false
 end
 
---- 关键词
-search_list = {
-    "七海千秋",
-    "七海",
-    "千秋",
-    "娜娜米",
-    "nanami",
-    -- "[CQ:at, id=2901232322]",
-
-    "search_end_flag"
-}
-
+-- 关键词检测
 function keyword_detect()
     for _, search in ipairs(search_list) do
         if search == "search_end_flag" then -- 没有找到关键词
@@ -549,16 +567,7 @@ function keyword_detect()
     return true
 end
 
---- 前缀排除词
-exclude_list = {
-    ".",
-    "。",
-    "（",
-    "(",
-    "#",
-    "reply_"
-}
-
+-- 前缀排除词
 function exclude_detect()
     for _, exclude_word in ipairs(exclude_list) do
         if string.sub(raw_msg, 1, #exclude_word) == exclude_word then
@@ -589,38 +598,7 @@ function log_stat_detect()
     end
 end
 
---- 违禁词/屏蔽词
-sens_words = { -- 违禁词不响应且上报
-    "去你的",
-    "滚",
-    "屎",
-    "操你",
-    "操我",
-    "操他",
-    "操她",
-    "他妈",
-    "sb",
-    "妈的",
-    "有病",
-    "毛病",
-    "傻叉",
-    "傻逼",
-    "搞鸡",
-    "做爱",
-    "你妈死了",
-    "nmsl",
-    "傻屌",
-    "脑残",
-    "中国",
-    "我国",
-    "祖国",
-    "灭国",
-    "杀人",
-    "偷渡",
-    "毒品",
-    "国家"
-}
-
+-- 违禁词
 function sens_detect(raw_msg)
     for _, words in ipairs(sens_words) do
         if string.find(raw_msg, words) then -- 找到违禁词
@@ -634,22 +612,7 @@ function sens_detect(raw_msg)
     end
 end
 
-unrelated_words = { -- 屏蔽词不响应但不上报
-    -- 一些无关CQ码
-    "CQ:image",
-    "CQ:record",
-    "CQ:video",
-
-    -- 容易误触发的词
-    "各有千秋",
-    "阅遍千秋",
-    "千秋万代",
-    "千秋大业",
-    "千秋人物",
-    "功在千秋",
-    "："
-}
-
+-- 无关词
 function unrelated_words_detect(raw_msg)
     for _, words in ipairs(unrelated_words) do
         if string.find(raw_msg, words) then -- 找到屏蔽词
@@ -660,9 +623,48 @@ end
 
 -----------------------------------------------------------------------------------------------------
 ---插件主流程
---------------------------------------------------------------------------------------------------------
---- 调用检测函数，进行各种检测排除流程
+-----------------------------------------------------------------------------------------------------
+--- 预处理
+raw_msg = msg.fromMsg
+if msg.gid then
+    channel_type = "group"
+    channel_id = msg.gid
+    channel_id_msg = "群聊" .. msg.gid
+else
+    channel_type = "private"
+    channel_id = msg.uid
+    channel_id_msg = "私聊"
+end
+user_id = msg.uid
 
+currentTime = os.date("%Y-%m-%d %H:%M:%S")
+
+--- 替换特定词，免得ai听不懂跑团术语
+-- 匹配和替换的表
+local replacements = {
+    ["1点妖"] = "运气好差",
+    ["一点妖"] = "运气好差",
+    ["一点仙"] = "差点就失败",
+    ["1点仙"] = "差点就失败",
+    -- ["[CQ:at, id=2901232322]"] = "七海千秋",
+}
+
+-- 进行批量替换
+for k, v in pairs(replacements) do
+    raw_msg = string.gsub(raw_msg, k, v)
+end
+
+
+--- debug模式，获取原始deepseekapi返回内容
+debug = false
+
+if string.sub(raw_msg, 1, 5) == "debug" then
+    debug = true
+    raw_msg = string.sub(raw_msg, 6)
+end
+
+-----------------------------------------------------------------------------------------------------
+--- 调用检测函数，进行各种检测排除流程
 --- 回复词检测
 if reply_detect(raw_msg) then
     eventMsg("reply_" .. raw_msg, msg.gid, msg.uid)
@@ -751,6 +753,7 @@ if type(is_first_reply) == "number" then
 end
 
 if is_first_reply then
+    -- UserConf存false时会因为bug取到空值，所以这里以1代替false
     set_conf(channel_type, channel_id, "aibot_first_time", 1)
     sleepTime(1000)
     return first_reply_help

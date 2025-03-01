@@ -500,7 +500,7 @@ function aibot_speech_detect(reply_msg) -- 若回复内容为骰娘发出的aibo
     for k, v0 in ipairs(aibot_speech_list) do
         for _, v in ipairs(v0) do
             if v.role == "assistant" then
-                log(v.content .. " == " .. reply_msg .. " = " .. tostring(v.content == reply_msg))
+                -- log(v.content .. " == " .. reply_msg .. " = " .. tostring(v.content == reply_msg))
                 if v.content == reply_msg then
                     return true, k
                 end
@@ -554,14 +554,12 @@ aibot_speech_list = get_conf(channel_type, channel_id, "aibot_speech_list", {})
 
 reply_msg = getmsg(reply_id)
 
-raw_msg = string.match(msg.fromMsg, "^%[CQ:reply,id=%d+%](.+)")    -- 抓取回复cq码之外的字符
+raw_msg = string.match(msg.fromMsg, "^%[CQ:reply,id=%d+%](.+)")        -- 抓取回复cq码之外的字符
 if raw_msg then
     raw_msg_without_at = string.match(raw_msg, "%[CQ:at,id=%d+%](.+)") -- 除去可能存在的atcq码
     if raw_msg_without_at then
         raw_msg = raw_msg_without_at
     end
-else
-    return -- 若除去回复cq码后消息为空则退出
 end
 
 currentTime = os.date("%Y-%m-%d %H:%M:%S")
@@ -577,13 +575,10 @@ local replacements = {
 }
 
 -- 进行批量替换
-if raw_msg then
-    for k, v in pairs(replacements) do
-        raw_msg = string.gsub(raw_msg, k, v)
-    end
-else
-    return -- 若除去atcq码后消息为空也退出
+for k, v in pairs(replacements) do
+    raw_msg = string.gsub(raw_msg, k, v)
 end
+
 -----------------------------------------------------------------------------------------------------
 --- 调用检测函数，进行各种检测排除流程
 -- 回复检测

@@ -22,12 +22,13 @@ end
 mainfest = read_json(getDiceDir() .. "/mod/aibot.json")
 
 help_msg = ""
-help_msg = string.format("aibot插件 by %s ver %s on %s & BERT text classification server %s with classification model %s\n\n%s\n使用：\n", 
-    mainfest.author, 
-    mainfest.ver, 
-    mainfest.AI_model, 
-    mainfest.BERT_text_classification_server_ver, 
-    mainfest.classification_model_ver, 
+help_msg = string.format(
+    "aibot插件 by %s ver %s on %s & BERT text classification server %s with classification model %s\n\n%s\n使用：\n",
+    mainfest.author,
+    mainfest.ver,
+    mainfest.AI_model,
+    mainfest.BERT_text_classification_server_ver,
+    mainfest.classification_model_ver,
     mainfest.comment)
 
 for _, v in ipairs(mainfest.order_list) do
@@ -83,7 +84,6 @@ if order == "on" then -- 开启ai回复
         set_conf(channel_type, channel_id, "aibot_enable", true)
         return 'deepseek ai回复成功开启'
     end
-
 elseif order == "off" then -- 关闭ai回复
     aibot_enable = get_conf(channel_type, channel_id, "aibot_enable", true)
     if aibot_enable then

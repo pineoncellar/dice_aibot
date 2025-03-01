@@ -24,7 +24,7 @@ deepseek_api = "https://openapi.coreshub.cn/v1/chat/completions"
 deepseek_api_token = "sk-OAv9DPyRfV8UmpGt7us0J6LDimEPf8qYOeVIj0shKJdF9Ejo"
 model = "DeepSeek-V3"
 notice_window = 0 -- 通知窗口
-max_length = 100 -- 检测长度限制，过长忽略
+max_length = 100  -- 检测长度限制，过长忽略
 
 -- api参数
 max_tokens = 100
